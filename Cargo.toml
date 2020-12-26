@@ -6,6 +6,7 @@ edition = "2018"
 description = "Core functionality and types for SkySpark / Project Haystack"
 keywords = ["skyspark", "haystack"]
 license = "MIT"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
