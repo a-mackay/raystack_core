@@ -35,9 +35,7 @@ impl Number {
     /// let n = Number::new(1.0, Some("pH".to_owned()));
     /// assert_eq!(Number::from_encoded_json_string("n:1.0 pH").unwrap(), n);
     /// ```
-    pub fn from_encoded_json_string(
-        json_string: &str,
-    ) -> Result<Self, ParseNumberError> {
+    pub fn from_encoded_json_string(json_string: &str) -> Result<Self, ParseNumberError> {
         let json_string = json_string.replacen("n:", "", 1);
         let mut split = json_string.trim().split(' ');
         let number_str = split.next();

@@ -1,11 +1,13 @@
 mod coord;
 mod hsref;
 mod number;
+mod symbol;
 mod tag;
 
 pub use coord::Coord;
 pub use hsref::{ParseRefError, Ref};
-pub use number::{ParseNumberError, Number};
+pub use number::{Number, ParseNumberError};
+pub use symbol::{ParseSymbolError, Symbol};
 pub use tag::{is_tag_name, ParseTagNameError, TagName};
 
 #[cfg(test)]
