@@ -1,6 +1,6 @@
 [package]
 name = "raystack_core"
-version = "0.2.3"
+version = "0.3.0"
 authors = ["A Mackay <opensauceburner@outlook.com"]
 edition = "2018"
 description = "Core functionality and types for SkySpark / Project Haystack"
