@@ -5,20 +5,53 @@ use thiserror::Error;
 /// string.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Number {
-    value: f64,
+    value: NumberValue,
     unit: Option<String>,
 }
 
+/// Represents the scalar portion of a Haystack Number.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum NumberValue {
+    Basic(f64),
+    Exponent(f64, i32),
+}
+
+impl std::fmt::Display for NumberValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Basic(n) => write!(f, "{}", n),
+            Self::Exponent(n, e) => write!(f, "{}e{}", n, e),
+        }
+    }
+}
+
 impl Number {
-    /// Create a new `Number`. If present, the unit should
+    /// Create a new `Number` with no exponent. If present, the unit should
     /// be a valid unit string from Project Haystack's
     /// unit database.
     pub fn new(value: f64, unit: Option<String>) -> Self {
-        Self { value, unit }
+        Self {
+            value: NumberValue::Basic(value),
+            unit,
+        }
+    }
+
+    /// Create a new `Number` with an exponent. If present, the unit should
+    /// be a valid unit string from Project Haystack's
+    /// unit database.
+    pub fn new_exponent(
+        base: f64,
+        exponent: i32,
+        unit: Option<String>,
+    ) -> Self {
+        Self {
+            value: NumberValue::Exponent(base, exponent),
+            unit,
+        }
     }
 
     /// Return the numeric component of this `Number`.
-    pub fn value(&self) -> f64 {
+    pub fn value(&self) -> NumberValue {
         self.value
     }
 
@@ -35,27 +68,58 @@ impl Number {
     /// let n = Number::new(1.0, Some("pH".to_owned()));
     /// assert_eq!(Number::from_encoded_json_string("n:1.0 pH").unwrap(), n);
     /// ```
-    pub fn from_encoded_json_string(json_string: &str) -> Result<Self, ParseNumberError> {
+    pub fn from_encoded_json_string(
+        json_string: &str,
+    ) -> Result<Self, ParseNumberError> {
         let json_string = json_string.replacen("n:", "", 1);
         let mut split = json_string.trim().split(' ');
-        let number_str = split.next();
+        let number_str = split
+            .next()
+            .ok_or_else(|| ParseNumberError::from_str(&json_string))?;
         let unit_str = split.next();
+        let unit = unit_str.map(|unit_str| unit_str.trim().to_string());
 
-        if let Some(number_str) = number_str {
-            let number = if number_str == "INF" {
-                std::f64::INFINITY
-            } else if number_str == "-INF" {
-                std::f64::NEG_INFINITY
-            } else {
-                number_str
+        let mut split2 = number_str.trim().split('e');
+        let base_num = split2
+            .next()
+            .ok_or_else(|| ParseNumberError::from_str(&json_string))?;
+        let exp_num = split2.next();
+
+        match exp_num {
+            Some(exp_num) => {
+                let base = base_num
                     .parse()
-                    .map_err(|_| ParseNumberError::from_str(&json_string))?
-            };
-            let unit = unit_str.map(|unit_str| unit_str.trim().to_string());
-            Ok(Number::new(number, unit))
-        } else {
-            Err(ParseNumberError::from_str(&json_string))
+                    .map_err(|_| ParseNumberError::from_str(&json_string))?;
+                let exp = exp_num
+                    .parse()
+                    .map_err(|_| ParseNumberError::from_str(&json_string))?;
+                Ok(Number::new_exponent(base, exp, unit))
+            }
+            None => {
+                let number = if number_str == "INF" {
+                    std::f64::INFINITY
+                } else if number_str == "-INF" {
+                    std::f64::NEG_INFINITY
+                } else {
+                    number_str
+                        .parse()
+                        .map_err(|_| ParseNumberError::from_str(&json_string))?
+                };
+                Ok(Number::new(number, unit))
+            }
         }
+
+        // let number = if number_str == "INF" {
+        //     std::f64::INFINITY
+        // } else if number_str == "-INF" {
+        //     std::f64::NEG_INFINITY
+        // } else {
+        //     number_str
+        //         .parse()
+        //         .map_err(|_| ParseNumberError::from_str(&json_string))?
+        // };
+        // let unit = unit_str.map(|unit_str| unit_str.trim().to_string());
+        // Ok(Number::new(number, unit))
     }
 }
 
@@ -86,20 +150,54 @@ impl ParseNumberError {
 
 #[cfg(test)]
 mod test {
-    use super::Number;
+    use super::{Number, NumberValue};
 
     #[test]
     fn from_encoded_json_string() {
         let unitless = "n:45.5";
         assert_eq!(
             Number::from_encoded_json_string(unitless).unwrap().value(),
-            45.5
+            NumberValue::Basic(45.5)
         );
 
         let unit = "n:73.2 °F";
         let number_with_unit = Number::from_encoded_json_string(unit).unwrap();
-        assert_eq!(number_with_unit.value(), 73.2);
+        assert_eq!(number_with_unit.value(), NumberValue::Basic(73.2));
         assert_eq!(number_with_unit.unit(), Some("°F"))
+    }
+
+    #[test]
+    fn from_encoded_json_string_exponent() {
+        let s = "n:1.23e+47";
+        assert_eq!(
+            Number::from_encoded_json_string(s).unwrap().value(),
+            NumberValue::Exponent(1.23, 47)
+        )
+    }
+
+    #[test]
+    fn from_encoded_json_string_negative_exponent() {
+        let s = "n:-1.23e-43";
+        assert_eq!(
+            Number::from_encoded_json_string(s).unwrap().value(),
+            NumberValue::Exponent(-1.23, -43)
+        )
+    }
+
+    #[test]
+    fn from_encoded_json_string_exponent_with_unit() {
+        let s = "n:1.23e+47 min";
+        let n = Number::from_encoded_json_string(s).unwrap();
+        assert_eq!(n.value(), NumberValue::Exponent(1.23, 47));
+        assert_eq!(n.unit(), Some("min"))
+    }
+
+    #[test]
+    fn from_encoded_json_string_negative_exponent_with_unit() {
+        let s = "n:9e-45 min";
+        let n = Number::from_encoded_json_string(s).unwrap();
+        assert_eq!(n.value(), NumberValue::Exponent(9.0, -45));
+        assert_eq!(n.unit(), Some("min"))
     }
 
     #[test]
@@ -107,12 +205,15 @@ mod test {
         let unitless = "n:INF";
         assert_eq!(
             Number::from_encoded_json_string(unitless).unwrap().value(),
-            std::f64::INFINITY,
+            NumberValue::Basic(std::f64::INFINITY),
         );
 
         let unit = "n:INF °F";
         let number_with_unit = Number::from_encoded_json_string(unit).unwrap();
-        assert_eq!(number_with_unit.value(), std::f64::INFINITY);
+        assert_eq!(
+            number_with_unit.value(),
+            NumberValue::Basic(std::f64::INFINITY)
+        );
         assert_eq!(number_with_unit.unit(), Some("°F"))
     }
 
@@ -121,40 +222,51 @@ mod test {
         let unitless = "n:-INF";
         assert_eq!(
             Number::from_encoded_json_string(unitless).unwrap().value(),
-            std::f64::NEG_INFINITY,
+            NumberValue::Basic(std::f64::NEG_INFINITY),
         );
 
         let unit = "n:-INF °F";
         let number_with_unit = Number::from_encoded_json_string(unit).unwrap();
-        assert_eq!(number_with_unit.value(), std::f64::NEG_INFINITY);
+        assert_eq!(
+            number_with_unit.value(),
+            NumberValue::Basic(std::f64::NEG_INFINITY)
+        );
         assert_eq!(number_with_unit.unit(), Some("°F"))
+    }
+
+    fn number_to_f64(number: &Number) -> f64 {
+        let val = number.value();
+        match val {
+            NumberValue::Basic(f) => f,
+            _ => panic!("Expected a NumberValue::Basic"),
+        }
     }
 
     #[test]
     fn from_encoded_json_string_signless_nan() {
         let unitless = "n:NaN";
-        assert!(Number::from_encoded_json_string(unitless)
-            .unwrap()
-            .value()
-            .is_nan());
+        let float1 =
+            number_to_f64(&Number::from_encoded_json_string(unitless).unwrap());
+        assert!(float1.is_nan());
 
         let unit = "n:NaN °F";
         let number_with_unit = Number::from_encoded_json_string(unit).unwrap();
-        assert!(number_with_unit.value().is_nan());
+        let float2 = number_to_f64(&number_with_unit);
+        assert!(float2.is_nan());
         assert_eq!(number_with_unit.unit(), Some("°F"))
     }
 
     #[test]
     fn from_encoded_json_string_signed_nan() {
         let unitless = "n:-NaN";
-        assert!(Number::from_encoded_json_string(unitless)
-            .unwrap()
-            .value()
-            .is_nan());
+        let float1 =
+            number_to_f64(&Number::from_encoded_json_string(unitless).unwrap());
+        assert!(float1.is_nan());
 
         let unit = "n:+NaN °F";
         let number_with_unit = Number::from_encoded_json_string(unit).unwrap();
-        assert!(number_with_unit.value().is_nan());
+        let float2 = number_to_f64(&number_with_unit);
+        assert!(float2.is_nan());
         assert_eq!(number_with_unit.unit(), Some("°F"))
     }
 }

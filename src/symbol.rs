@@ -30,7 +30,9 @@ impl Symbol {
     /// let json_str = "y:steam-boiler"; // ^steam-boiler
     /// let my_symbol = Symbol::from_encoded_json_string(json_str).unwrap();
     /// ```
-    pub fn from_encoded_json_string(json_string: &str) -> Result<Self, ParseSymbolError> {
+    pub fn from_encoded_json_string(
+        json_string: &str,
+    ) -> Result<Self, ParseSymbolError> {
         Self::new(json_string.replacen("y:", "^", 1))
     }
 
@@ -68,7 +70,8 @@ impl Symbol {
         let second_section = sections.get(1);
 
         // Match things like `steam`, `steam-boiler`, `steam-boiler-2`, etc.
-        let re = Regex::new(r"[a-z][a-zA-Z0-9_]*(-[a-z][a-zA-Z0-9_])*").unwrap();
+        let re =
+            Regex::new(r"[a-z][a-zA-Z0-9_]*(-[a-z][a-zA-Z0-9_])*").unwrap();
 
         if !re.is_match(first_section) {
             return false;

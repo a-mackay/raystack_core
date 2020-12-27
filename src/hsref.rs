@@ -29,7 +29,9 @@ impl Ref {
     /// let json_str = "r:p:bigProject:r:24efe1c4-24aef280";
     /// let my_ref = Ref::from_encoded_json_string(json_str).unwrap();
     /// ```
-    pub fn from_encoded_json_string(json_string: &str) -> Result<Self, ParseRefError> {
+    pub fn from_encoded_json_string(
+        json_string: &str,
+    ) -> Result<Self, ParseRefError> {
         if let Some(raw_id) = json_string.split(' ').next() {
             Self::new(raw_id.replacen("r:", "@", 1))
         } else {
