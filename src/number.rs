@@ -1,5 +1,3 @@
-use thiserror::Error;
-
 /// A Haystack Number, encapsulating a scalar value and
 /// an optional unit value. The unit is represented as a
 /// string.
@@ -57,18 +55,3 @@ impl std::fmt::Display for Number {
         }
     }
 }
-
-// /// Error denoting that a `Number` could not be parsed from a string.
-// #[derive(Clone, Debug, Eq, Error, PartialEq)]
-// #[error("Could not parse a Number from the string {unparsable_number}")]
-// pub struct ParseNumberError {
-//     unparsable_number: String,
-// }
-
-// impl ParseNumberError {
-//     pub(crate) fn from_str(s: &str) -> Self {
-//         Self {
-//             unparsable_number: s.to_string(),
-//         }
-//     }
-// }
