@@ -9,7 +9,7 @@ mod tag;
 
 pub use coord::Coord;
 pub use hsref::{ParseRefError, Ref};
-pub use number::{NormalNumber, Number, NumberValue, ParseNumberError};
+pub use number::{Number};
 pub use qname::Qname;
 pub use symbol::{ParseSymbolError, Symbol};
 pub use tag::{is_tag_name, ParseTagNameError, TagName};
