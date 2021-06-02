@@ -4,28 +4,19 @@ use thiserror::Error;
 /// an optional unit value. The unit is represented as a
 /// string.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Number {
+pub enum Number {
+    Normal(NormalNumber),
+    Nan,
+}
+
+/// A "normal" Number (which is not NaN, but does include +INF and -INF).
+#[derive(Clone, Debug, PartialEq)]
+pub struct NormalNumber {
     value: NumberValue,
     unit: Option<String>,
 }
 
-/// Represents the scalar portion of a Haystack Number.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum NumberValue {
-    Basic(f64),
-    Exponent(f64, i32),
-}
-
-impl std::fmt::Display for NumberValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Basic(n) => write!(f, "{}", n),
-            Self::Exponent(n, e) => write!(f, "{}e{}", n, e),
-        }
-    }
-}
-
-impl Number {
+impl NormalNumber {
     /// Create a new `Number` with no exponent. If present, the unit should
     /// be a valid unit string from Project Haystack's
     /// unit database.
@@ -59,76 +50,127 @@ impl Number {
     pub fn unit(&self) -> Option<&str> {
         self.unit.as_ref().map(|unit| unit.as_ref())
     }
+}
 
-    /// Parse a `Number` from a number encoded in a JSON string.
-    /// # Example
-    /// ```rust
-    /// use raystack_core::Number;
-    ///
-    /// let n = Number::new(1.0, Some("pH".to_owned()));
-    /// assert_eq!(Number::from_encoded_json_string("n:1.0 pH").unwrap(), n);
-    /// ```
-    pub fn from_encoded_json_string(
-        json_string: &str,
-    ) -> Result<Self, ParseNumberError> {
-        let json_string = json_string.replacen("n:", "", 1);
-        let mut split = json_string.trim().split(' ');
-        let number_str = split
-            .next()
-            .ok_or_else(|| ParseNumberError::from_str(&json_string))?;
-        let unit_str = split.next();
-        let unit = unit_str.map(|unit_str| unit_str.trim().to_string());
+/// Represents the scalar portion of a Haystack Number.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum NumberValue {
+    Basic(f64),
+    Exponent(f64, i32),
+}
 
-        let mut split2 = number_str.trim().split('e');
-        let base_num = split2
-            .next()
-            .ok_or_else(|| ParseNumberError::from_str(&json_string))?;
-        let exp_num = split2.next();
-
-        match exp_num {
-            Some(exp_num) => {
-                let base = base_num
-                    .parse()
-                    .map_err(|_| ParseNumberError::from_str(&json_string))?;
-                let exp = exp_num
-                    .parse()
-                    .map_err(|_| ParseNumberError::from_str(&json_string))?;
-                Ok(Number::new_exponent(base, exp, unit))
-            }
-            None => {
-                let number = if number_str == "INF" {
-                    std::f64::INFINITY
-                } else if number_str == "-INF" {
-                    std::f64::NEG_INFINITY
-                } else {
-                    number_str
-                        .parse()
-                        .map_err(|_| ParseNumberError::from_str(&json_string))?
-                };
-                Ok(Number::new(number, unit))
-            }
+impl std::fmt::Display for NumberValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Basic(n) => write!(f, "{}", n),
+            Self::Exponent(n, e) => write!(f, "{}e{}", n, e),
         }
-
-        // let number = if number_str == "INF" {
-        //     std::f64::INFINITY
-        // } else if number_str == "-INF" {
-        //     std::f64::NEG_INFINITY
-        // } else {
-        //     number_str
-        //         .parse()
-        //         .map_err(|_| ParseNumberError::from_str(&json_string))?
-        // };
-        // let unit = unit_str.map(|unit_str| unit_str.trim().to_string());
-        // Ok(Number::new(number, unit))
     }
+}
+
+impl Number {
+    /// Create a new `Number` with no exponent. If present, the unit should
+    /// be a valid unit string from Project Haystack's
+    /// unit database.
+    pub fn new(value: f64, unit: Option<String>) -> Self {
+        Self::Normal(NormalNumber {
+            value: NumberValue::Basic(value),
+            unit,
+        })
+    }
+
+    /// Create a new `Number` with an exponent. If present, the unit should
+    /// be a valid unit string from Project Haystack's
+    /// unit database.
+    pub fn new_exponent(
+        base: f64,
+        exponent: i32,
+        unit: Option<String>,
+    ) -> Self {
+        Self::Normal(NormalNumber {
+            value: NumberValue::Exponent(base, exponent),
+            unit,
+        })
+    }
+
+    /// Return the numeric component of this `Number`, if the number is not NaN.
+    pub fn value(&self) -> Option<NumberValue> {
+        match self {
+            Self::Normal(num) => Some(num.value),
+            Self::Nan => None,
+        }
+    }
+
+    /// Return the unit component of this `Number`, if present.
+    pub fn unit(&self) -> Option<&str> {
+        match self {
+            Self::Normal(num) => num.unit.as_ref().map(|unit| unit.as_ref()),
+            Self::Nan => None,
+        }
+    }
+
+    // /// Parse a `Number` from a number encoded in a JSON string.
+    // /// # Example
+    // /// ```rust
+    // /// use raystack_core::Number;
+    // ///
+    // /// let n = Number::new(1.0, Some("pH".to_owned()));
+    // /// assert_eq!(Number::from_encoded_json_string("n:1.0 pH").unwrap(), n);
+    // /// ```
+    // pub fn from_encoded_json_string(
+    //     json_string: &str,
+    // ) -> Result<Self, ParseNumberError> {
+    //     let json_string = json_string.replacen("n:", "", 1);
+    //     let mut split = json_string.trim().split(' ');
+    //     let number_str = split
+    //         .next()
+    //         .ok_or_else(|| ParseNumberError::from_str(&json_string))?;
+    //     let unit_str = split.next();
+    //     let unit = unit_str.map(|unit_str| unit_str.trim().to_string());
+
+    //     let mut split2 = number_str.trim().split('e');
+    //     let base_num = split2
+    //         .next()
+    //         .ok_or_else(|| ParseNumberError::from_str(&json_string))?;
+    //     let exp_num = split2.next();
+
+    //     match exp_num {
+    //         Some(exp_num) => {
+    //             let base = base_num
+    //                 .parse()
+    //                 .map_err(|_| ParseNumberError::from_str(&json_string))?;
+    //             let exp = exp_num
+    //                 .parse()
+    //                 .map_err(|_| ParseNumberError::from_str(&json_string))?;
+    //             Ok(Number::new_exponent(base, exp, unit))
+    //         }
+    //         None => {
+    //             let number = if number_str == "INF" {
+    //                 std::f64::INFINITY
+    //             } else if number_str == "-INF" {
+    //                 std::f64::NEG_INFINITY
+    //             } else {
+    //                 number_str
+    //                     .parse()
+    //                     .map_err(|_| ParseNumberError::from_str(&json_string))?
+    //             };
+    //             Ok(Number::new(number, unit))
+    //         }
+    //     }
+    // }
 }
 
 impl std::fmt::Display for Number {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(unit) = self.unit() {
-            write!(f, "{} {}", self.value(), unit)
-        } else {
-            write!(f, "{}", self.value().to_string())
+        match self {
+            Self::Normal(num) => {
+                if let Some(unit) = num.unit() {
+                    write!(f, "{} {}", num.value(), unit)
+                } else {
+                    write!(f, "{}", num.value().to_string())
+                }
+            },
+            Self::Nan => write!(f, "NaN"),
         }
     }
 }

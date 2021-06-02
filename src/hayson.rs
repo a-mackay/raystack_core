@@ -1,4 +1,4 @@
-use crate::{Coord, Ref};
+use crate::{Coord, Ref, NormalNumber, Number, NumberValue};
 use serde_json::json;
 use serde_json::Value;
 
@@ -131,6 +131,89 @@ impl Hayson for Ref {
             KIND: "ref",
             "val": self.to_axon_code().replacen("@", "", 1),
         })
+    }
+}
+
+impl Hayson for Number {
+    fn from_hayson(value: Value) -> Result<Self, FromHaysonError> {
+        match &value {
+            Value::Number(num) => {
+                let float = num.as_f64();
+                match float {
+                    Some(float) => Ok(Number::new(float, None)),
+                    None => error(format!("Number is not a f64: {}", num)),
+                }
+            },
+            Value::Object(obj) => {
+                if let Some(kind_err) = check_kind("number", &value) {
+                    return Err(kind_err);
+                }
+                // The number, "INF", "-INF" or "NaN"
+                let val = obj.get("val");
+                if val.is_none() {
+                    return error("Number val is missing");
+                }
+                let val = val.unwrap();
+
+                let unit = obj.get("unit");
+                if let Some(unit_val) = unit {
+                    let unit_str = unit_val.as_str();
+                    if unit_str.is_none() {
+                        return error("Number unit is not a string");
+                    }
+                }
+                let unit = unit.map(|unit_val| unit_val.as_str().unwrap().to_owned());
+
+                match val {
+                    Value::String(string) => {
+                        match string.as_ref() {
+                            "INF" => {
+                                let num = NormalNumber::new(f64::INFINITY, unit);
+                                Ok(Number::Normal(num))
+                            },
+                            "-INF" => {
+                                let num = NormalNumber::new(f64::NEG_INFINITY, unit);
+                                Ok(Number::Normal(num))
+                            },
+                            "NaN" => Ok(Number::Nan),
+                            _ => error("Number val is a string but is not one of INF, -INF or NaN"),
+                        }
+                    },
+                    Value::Number(num) => {
+                        let float = num.as_f64();
+                        match float {
+                            Some(float) => Ok(Number::new(float, unit)),
+                            None => error(format!("Number val is not a f64: {}", num)),
+                        }
+                    },
+                    _ => error("Number val must be either a number or a string"),
+                }
+            },
+            _ => error("Ref JSON value must be an object")
+        }
+    }
+
+    fn to_hayson(&self) -> Value {
+        let kind = "number";
+        match self {
+            Self::Normal(num) => {
+                let unit = num.unit();
+                match num.value() {
+                    NumberValue::Basic(float) => {
+                        if float.is_
+                    },
+                    NumberValue::Exponent(float, exp) => {
+                        unimplemented!()
+                    }
+                }
+            },
+            Self::Nan => {
+                json!({
+                    KIND: kind,
+                    "val": "NaN",
+                })
+            }
+        }
     }
 }
 
