@@ -1,4 +1,4 @@
-use crate::{Coord, Ref, Number};
+use crate::{Coord, Number, Ref, Symbol};
 use serde_json::json;
 use serde_json::Value;
 
@@ -10,7 +10,7 @@ pub struct FromHaysonError {
 const KIND: &str = "_kind";
 
 impl FromHaysonError {
-    fn new(message: String) -> Self {
+    pub fn new(message: String) -> Self {
         Self {
             message,
         }
@@ -45,7 +45,7 @@ fn check_kind(target_kind: &str, value: &Value) -> Option<FromHaysonError> {
 
 /// Something which can be converted to and from Hayson
 /// (the new JSON encoding used by Project Haystack).
-trait Hayson: Sized {
+pub trait Hayson: Sized {
     fn from_hayson(value: Value) -> Result<Self, FromHaysonError>;
     fn to_hayson(&self) -> Value;
 }
@@ -232,10 +232,48 @@ impl Hayson for Number {
     }
 }
 
+impl Hayson for Symbol {
+    fn from_hayson(value: Value) -> Result<Self, FromHaysonError> {
+        match &value {
+            Value::Object(obj) => {
+                if let Some(kind_err) = check_kind("symbol", &value) {
+                    return Err(kind_err);
+                }
+                let val = obj.get("val");
+
+                if val.is_none() {
+                    return error("Symbol val is missing");
+                }
+
+                let val = val.unwrap().as_str();
+                if val.is_none() {
+                    return error("Symbol val is not a string");
+                }
+
+                let symbol_str = format!("^{}", val.unwrap());
+
+                if !Symbol::is_valid_symbol(&symbol_str) {
+                    return error(format!("Symbol val is not valid: {}", symbol_str));
+                }
+
+                Ok(Symbol::new(symbol_str).unwrap())
+            },
+            _ => error("Symbol JSON value must be an object")
+        }
+    }
+
+    fn to_hayson(&self) -> Value {
+        json!({
+            KIND: "symbol",
+            "val": self.to_axon_code().replacen("^", "", 1),
+        })
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::Hayson;
-    use crate::{Coord, Number, Ref};
+    use crate::{Coord, Number, Ref, Symbol};
 
     #[test]
     fn serde_coord_works() {
@@ -308,5 +346,13 @@ mod test {
         let value = num.to_hayson();
         let deserialized = Number::from_hayson(value).unwrap();
         assert_eq!(num, deserialized);
+    }
+
+    #[test]
+    fn serde_symbol_works() {
+        let sym = Symbol::new("^abc".to_owned()).unwrap();
+        let value = sym.to_hayson();
+        let deserialized = Symbol::from_hayson(value).unwrap();
+        assert_eq!(sym, deserialized);
     }
 }
