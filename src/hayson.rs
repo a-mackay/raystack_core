@@ -1,4 +1,4 @@
-use crate::{Coord, Number, Ref, Symbol};
+use crate::{Coord, Marker, Na, Number, RemoveMarker, Ref, Symbol};
 use serde_json::json;
 use serde_json::Value;
 
@@ -270,10 +270,70 @@ impl Hayson for Symbol {
     }
 }
 
+impl Hayson for Marker {
+    fn from_hayson(value: Value) -> Result<Self, FromHaysonError> {
+        match &value {
+            Value::Object(_) => {
+                match check_kind("marker", &value) {
+                    Some(kind_err) => Err(kind_err),
+                    None => Ok(Marker::new())
+                }
+            },
+            _ => error("Marker JSON value must be an object")
+        }
+    }
+
+    fn to_hayson(&self) -> Value {
+        json!({
+            KIND: "marker",
+        })
+    }
+}
+
+impl Hayson for RemoveMarker {
+    fn from_hayson(value: Value) -> Result<Self, FromHaysonError> {
+        match &value {
+            Value::Object(_) => {
+                match check_kind("remove", &value) {
+                    Some(kind_err) => Err(kind_err),
+                    None => Ok(RemoveMarker::new())
+                }
+            },
+            _ => error("RemoveMarker JSON value must be an object")
+        }
+    }
+
+    fn to_hayson(&self) -> Value {
+        json!({
+            KIND: "remove",
+        })
+    }
+}
+
+impl Hayson for Na {
+    fn from_hayson(value: Value) -> Result<Self, FromHaysonError> {
+        match &value {
+            Value::Object(_) => {
+                match check_kind("na", &value) {
+                    Some(kind_err) => Err(kind_err),
+                    None => Ok(Na::new())
+                }
+            },
+            _ => error("NA JSON value must be an object")
+        }
+    }
+
+    fn to_hayson(&self) -> Value {
+        json!({
+            KIND: "na",
+        })
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::Hayson;
-    use crate::{Coord, Number, Ref, Symbol};
+    use crate::{Coord, Marker, Na, Number, Ref, RemoveMarker, Symbol};
 
     #[test]
     fn serde_coord_works() {
@@ -354,5 +414,29 @@ mod test {
         let value = sym.to_hayson();
         let deserialized = Symbol::from_hayson(value).unwrap();
         assert_eq!(sym, deserialized);
+    }
+
+    #[test]
+    fn serde_marker_works() {
+        let x = Marker::new();
+        let value = x.to_hayson();
+        let deserialized = Marker::from_hayson(value).unwrap();
+        assert_eq!(x, deserialized);
+    }
+
+    #[test]
+    fn serde_remove_marker_works() {
+        let x = RemoveMarker::new();
+        let value = x.to_hayson();
+        let deserialized = RemoveMarker::from_hayson(value).unwrap();
+        assert_eq!(x, deserialized);
+    }
+
+    #[test]
+    fn serde_na_works() {
+        let x = Na::new();
+        let value = x.to_hayson();
+        let deserialized = Na::from_hayson(value).unwrap();
+        assert_eq!(x, deserialized);
     }
 }
