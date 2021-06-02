@@ -1,4 +1,6 @@
 mod coord;
+#[cfg(feature = "json")]
+mod hayson;
 mod hsref;
 mod number;
 mod qname;
