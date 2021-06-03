@@ -1,4 +1,4 @@
-use crate::{Coord, Marker, Na, Number, RemoveMarker, Ref, Symbol};
+use crate::{Coord, Marker, Na, Number, RemoveMarker, Ref, Symbol, Uri, Xstr};
 use serde_json::json;
 use serde_json::Value;
 
@@ -330,10 +330,89 @@ impl Hayson for Na {
     }
 }
 
+impl Hayson for Uri {
+    fn from_hayson(value: Value) -> Result<Self, FromHaysonError> {
+        match &value {
+            Value::Object(obj) => {
+                if let Some(kind_err) = check_kind("uri", &value) {
+                    return Err(kind_err);
+                }
+                let val = obj.get("val");
+
+                if val.is_none() {
+                    return error("Uri val is missing");
+                }
+
+                let val = val.unwrap().as_str();
+                if val.is_none() {
+                    return error("Uri val is not a string");
+                }
+
+                Ok(Uri::new(val.unwrap().to_owned()))
+            },
+            _ => error("Uri JSON value must be an object")
+        }
+    }
+
+    fn to_hayson(&self) -> Value {
+        json!({
+            KIND: "uri",
+            "val": self.as_ref(),
+        })
+    }
+}
+
+impl Hayson for Xstr {
+    fn from_hayson(value: Value) -> Result<Self, FromHaysonError> {
+        match &value {
+            Value::Object(obj) => {
+                if let Some(kind_err) = check_kind("xstr", &value) {
+                    return Err(kind_err);
+                }
+                let val = obj.get("val");
+
+                if val.is_none() {
+                    return error("Xstr val is missing");
+                }
+
+                let val = val.unwrap().as_str();
+                if val.is_none() {
+                    return error("Xstr val is not a string");
+                }
+
+                let type_name = obj.get("type");
+
+                if type_name.is_none() {
+                    return error("Xstr type is missing");
+                }
+
+                let type_name = type_name.unwrap().as_str();
+                if type_name.is_none() {
+                    return error("Xstr type is not a string");
+                }
+
+                let val = val.unwrap().to_owned();
+                let type_name = type_name.unwrap().to_owned();
+
+                Ok(Xstr::new(type_name, val))
+            },
+            _ => error("Xstr JSON value must be an object")
+        }
+    }
+
+    fn to_hayson(&self) -> Value {
+        json!({
+            KIND: "xstr",
+            "type": self.type_name(),
+            "val": self.value(),
+        })
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::Hayson;
-    use crate::{Coord, Marker, Na, Number, Ref, RemoveMarker, Symbol};
+    use crate::{Coord, Marker, Na, Number, Ref, RemoveMarker, Symbol, Uri, Xstr};
 
     #[test]
     fn serde_coord_works() {
@@ -437,6 +516,22 @@ mod test {
         let x = Na::new();
         let value = x.to_hayson();
         let deserialized = Na::from_hayson(value).unwrap();
+        assert_eq!(x, deserialized);
+    }
+
+    #[test]
+    fn serde_uri_works() {
+        let x = Uri::new("http://www.google.com".to_owned());
+        let value = x.to_hayson();
+        let deserialized = Uri::from_hayson(value).unwrap();
+        assert_eq!(x, deserialized);
+    }
+
+    #[test]
+    fn serde_xstr_works() {
+        let x = Xstr::new("Color".to_owned(), "red".to_owned());
+        let value = x.to_hayson();
+        let deserialized = Xstr::from_hayson(value).unwrap();
         assert_eq!(x, deserialized);
     }
 }

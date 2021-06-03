@@ -1,4 +1,3 @@
-
 /// A Haystack Uri.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Uri(String);
