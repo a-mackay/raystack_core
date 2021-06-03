@@ -46,12 +46,12 @@ fn check_kind(target_kind: &str, value: &Value) -> Option<FromHaysonError> {
 /// Something which can be converted to and from Hayson
 /// (the new JSON encoding used by Project Haystack).
 pub trait Hayson: Sized {
-    fn from_hayson(value: Value) -> Result<Self, FromHaysonError>;
+    fn from_hayson(value: &Value) -> Result<Self, FromHaysonError>;
     fn to_hayson(&self) -> Value;
 }
 
 impl Hayson for Coord {
-    fn from_hayson(value: Value) -> Result<Self, FromHaysonError> {
+    fn from_hayson(value: &Value) -> Result<Self, FromHaysonError> {
         match &value {
             Value::Object(obj) => {
                 if let Some(kind_err) = check_kind("coord", &value) {
@@ -96,7 +96,7 @@ impl Hayson for Coord {
 }
 
 impl Hayson for Ref {
-    fn from_hayson(value: Value) -> Result<Self, FromHaysonError> {
+    fn from_hayson(value: &Value) -> Result<Self, FromHaysonError> {
         match &value {
             Value::Object(obj) => {
                 if let Some(kind_err) = check_kind("ref", &value) {
@@ -135,7 +135,7 @@ impl Hayson for Ref {
 }
 
 impl Hayson for Number {
-    fn from_hayson(value: Value) -> Result<Self, FromHaysonError> {
+    fn from_hayson(value: &Value) -> Result<Self, FromHaysonError> {
         match &value {
             Value::Number(num) => {
                 let float = num.as_f64();
@@ -233,7 +233,7 @@ impl Hayson for Number {
 }
 
 impl Hayson for Symbol {
-    fn from_hayson(value: Value) -> Result<Self, FromHaysonError> {
+    fn from_hayson(value: &Value) -> Result<Self, FromHaysonError> {
         match &value {
             Value::Object(obj) => {
                 if let Some(kind_err) = check_kind("symbol", &value) {
@@ -271,7 +271,7 @@ impl Hayson for Symbol {
 }
 
 impl Hayson for Marker {
-    fn from_hayson(value: Value) -> Result<Self, FromHaysonError> {
+    fn from_hayson(value: &Value) -> Result<Self, FromHaysonError> {
         match &value {
             Value::Object(_) => {
                 match check_kind("marker", &value) {
@@ -291,7 +291,7 @@ impl Hayson for Marker {
 }
 
 impl Hayson for RemoveMarker {
-    fn from_hayson(value: Value) -> Result<Self, FromHaysonError> {
+    fn from_hayson(value: &Value) -> Result<Self, FromHaysonError> {
         match &value {
             Value::Object(_) => {
                 match check_kind("remove", &value) {
@@ -311,7 +311,7 @@ impl Hayson for RemoveMarker {
 }
 
 impl Hayson for Na {
-    fn from_hayson(value: Value) -> Result<Self, FromHaysonError> {
+    fn from_hayson(value: &Value) -> Result<Self, FromHaysonError> {
         match &value {
             Value::Object(_) => {
                 match check_kind("na", &value) {
@@ -331,7 +331,7 @@ impl Hayson for Na {
 }
 
 impl Hayson for Uri {
-    fn from_hayson(value: Value) -> Result<Self, FromHaysonError> {
+    fn from_hayson(value: &Value) -> Result<Self, FromHaysonError> {
         match &value {
             Value::Object(obj) => {
                 if let Some(kind_err) = check_kind("uri", &value) {
@@ -363,7 +363,7 @@ impl Hayson for Uri {
 }
 
 impl Hayson for Xstr {
-    fn from_hayson(value: Value) -> Result<Self, FromHaysonError> {
+    fn from_hayson(value: &Value) -> Result<Self, FromHaysonError> {
         match &value {
             Value::Object(obj) => {
                 if let Some(kind_err) = check_kind("xstr", &value) {
@@ -418,7 +418,7 @@ mod test {
     fn serde_coord_works() {
         let coord = Coord::new(1.23, 4.56);
         let value = coord.to_hayson();
-        let deserialized = Coord::from_hayson(value).unwrap();
+        let deserialized = Coord::from_hayson(&value).unwrap();
         assert_eq!(coord, deserialized);
     }
 
@@ -426,7 +426,7 @@ mod test {
     fn serde_ref_works() {
         let hsref = Ref::new("@abc".to_owned()).unwrap();
         let value = hsref.to_hayson();
-        let deserialized = Ref::from_hayson(value).unwrap();
+        let deserialized = Ref::from_hayson(&value).unwrap();
         assert_eq!(hsref, deserialized);
     }
 
@@ -434,7 +434,7 @@ mod test {
     fn serde_number_nan_works() {
         let num = Number::new(f64::NAN, None);
         let value = num.to_hayson();
-        let deserialized = Number::from_hayson(value).unwrap();
+        let deserialized = Number::from_hayson(&value).unwrap();
         assert!(deserialized.value().is_nan());
         assert!(deserialized.unit().is_none())
     }
@@ -443,7 +443,7 @@ mod test {
     fn serde_number_posinf_unitless_works() {
         let num = Number::new(f64::INFINITY, None);
         let value = num.to_hayson();
-        let deserialized = Number::from_hayson(value).unwrap();
+        let deserialized = Number::from_hayson(&value).unwrap();
         assert_eq!(num, deserialized);
     }
 
@@ -451,7 +451,7 @@ mod test {
     fn serde_number_posinf_units_works() {
         let num = Number::new(f64::INFINITY, Some("m/s".to_owned()));
         let value = num.to_hayson();
-        let deserialized = Number::from_hayson(value).unwrap();
+        let deserialized = Number::from_hayson(&value).unwrap();
         assert_eq!(num, deserialized);
     }
 
@@ -459,7 +459,7 @@ mod test {
     fn serde_number_neginf_unitless_works() {
         let num = Number::new(f64::NEG_INFINITY, None);
         let value = num.to_hayson();
-        let deserialized = Number::from_hayson(value).unwrap();
+        let deserialized = Number::from_hayson(&value).unwrap();
         assert_eq!(num, deserialized);
     }
 
@@ -467,7 +467,7 @@ mod test {
     fn serde_number_neginf_units_works() {
         let num = Number::new(f64::NEG_INFINITY, Some("m/s".to_owned()));
         let value = num.to_hayson();
-        let deserialized = Number::from_hayson(value).unwrap();
+        let deserialized = Number::from_hayson(&value).unwrap();
         assert_eq!(num, deserialized);
     }
 
@@ -475,7 +475,7 @@ mod test {
     fn serde_number_unitless_works() {
         let num = Number::new(1.23, None);
         let value = num.to_hayson();
-        let deserialized = Number::from_hayson(value).unwrap();
+        let deserialized = Number::from_hayson(&value).unwrap();
         assert_eq!(num, deserialized);
     }
 
@@ -483,7 +483,7 @@ mod test {
     fn serde_number_units_works() {
         let num = Number::new(1.23, Some("m/s".to_owned()));
         let value = num.to_hayson();
-        let deserialized = Number::from_hayson(value).unwrap();
+        let deserialized = Number::from_hayson(&value).unwrap();
         assert_eq!(num, deserialized);
     }
 
@@ -491,7 +491,7 @@ mod test {
     fn serde_symbol_works() {
         let sym = Symbol::new("^abc".to_owned()).unwrap();
         let value = sym.to_hayson();
-        let deserialized = Symbol::from_hayson(value).unwrap();
+        let deserialized = Symbol::from_hayson(&value).unwrap();
         assert_eq!(sym, deserialized);
     }
 
@@ -499,7 +499,7 @@ mod test {
     fn serde_marker_works() {
         let x = Marker::new();
         let value = x.to_hayson();
-        let deserialized = Marker::from_hayson(value).unwrap();
+        let deserialized = Marker::from_hayson(&value).unwrap();
         assert_eq!(x, deserialized);
     }
 
@@ -507,7 +507,7 @@ mod test {
     fn serde_remove_marker_works() {
         let x = RemoveMarker::new();
         let value = x.to_hayson();
-        let deserialized = RemoveMarker::from_hayson(value).unwrap();
+        let deserialized = RemoveMarker::from_hayson(&value).unwrap();
         assert_eq!(x, deserialized);
     }
 
@@ -515,7 +515,7 @@ mod test {
     fn serde_na_works() {
         let x = Na::new();
         let value = x.to_hayson();
-        let deserialized = Na::from_hayson(value).unwrap();
+        let deserialized = Na::from_hayson(&value).unwrap();
         assert_eq!(x, deserialized);
     }
 
@@ -523,7 +523,7 @@ mod test {
     fn serde_uri_works() {
         let x = Uri::new("http://www.google.com".to_owned());
         let value = x.to_hayson();
-        let deserialized = Uri::from_hayson(value).unwrap();
+        let deserialized = Uri::from_hayson(&value).unwrap();
         assert_eq!(x, deserialized);
     }
 
@@ -531,7 +531,7 @@ mod test {
     fn serde_xstr_works() {
         let x = Xstr::new("Color".to_owned(), "red".to_owned());
         let value = x.to_hayson();
-        let deserialized = Xstr::from_hayson(value).unwrap();
+        let deserialized = Xstr::from_hayson(&value).unwrap();
         assert_eq!(x, deserialized);
     }
 }

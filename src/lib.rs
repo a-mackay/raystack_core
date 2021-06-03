@@ -12,7 +12,7 @@ mod uri;
 mod xstr;
 
 pub use coord::Coord;
-pub use hayson::Hayson;
+pub use hayson::{Hayson, FromHaysonError};
 pub use hsref::{ParseRefError, Ref};
 pub use marker::{Marker, RemoveMarker};
 pub use na::Na;
