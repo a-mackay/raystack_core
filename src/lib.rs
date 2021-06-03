@@ -8,6 +8,7 @@ mod number;
 mod qname;
 mod symbol;
 mod tag;
+mod uri;
 
 pub use coord::Coord;
 pub use hayson::Hayson;
@@ -18,6 +19,7 @@ pub use number::{Number};
 pub use qname::Qname;
 pub use symbol::{ParseSymbolError, Symbol};
 pub use tag::{is_tag_name, ParseTagNameError, TagName};
+pub use uri::Uri;
 
 #[cfg(test)]
 mod tests {
