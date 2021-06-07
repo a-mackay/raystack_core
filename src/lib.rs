@@ -12,6 +12,7 @@ mod uri;
 mod xstr;
 
 pub use coord::Coord;
+#[cfg(feature = "json")]
 pub use hayson::{Hayson, FromHaysonError};
 pub use hsref::{ParseRefError, Ref};
 pub use marker::{Marker, RemoveMarker};
