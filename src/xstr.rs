@@ -14,10 +14,7 @@ impl Xstr {
     /// let my_xstr = Xstr::new("Color".to_string(), "red".to_string());
     /// ```
     pub fn new(type_name: String, value: String) -> Self {
-        Self {
-            type_name,
-            value,
-        }
+        Self { type_name, value }
     }
 
     pub fn type_name(&self) -> &str {

@@ -12,10 +12,7 @@ impl Number {
     /// be a valid unit string from Project Haystack's
     /// unit database.
     pub fn new(value: f64, unit: Option<String>) -> Self {
-        Self {
-            value,
-            unit,
-        }
+        Self { value, unit }
     }
 
     /// Create a new `Number` with no units.
@@ -30,7 +27,7 @@ impl Number {
 
     /// Return the unit component of this `Number`, if present.
     pub fn unit(&self) -> Option<&str> {
-         self.unit.as_ref().map(|unit| unit.as_ref())
+        self.unit.as_ref().map(|unit| unit.as_ref())
     }
 }
 
@@ -51,12 +48,10 @@ impl std::fmt::Display for Number {
             } else {
                 write!(f, "-INF")
             }
+        } else if let Some(unit) = self.unit() {
+            write!(f, "{} {}", value, unit)
         } else {
-            if let Some(unit) = self.unit() {
-                write!(f, "{} {}", value, unit)
-            } else {
-                write!(f, "{}", value)
-            }
+            write!(f, "{}", value)
         }
     }
 }

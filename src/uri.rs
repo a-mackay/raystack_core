@@ -14,7 +14,6 @@ impl Uri {
         Uri(s)
     }
 
-
     /// Convert this Uri into a string.
     pub fn into_string(self) -> String {
         self.0

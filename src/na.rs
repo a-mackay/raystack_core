@@ -7,3 +7,9 @@ impl Na {
         Self
     }
 }
+
+impl std::default::Default for Na {
+    fn default() -> Self {
+        Self::new()
+    }
+}

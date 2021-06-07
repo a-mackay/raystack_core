@@ -1,43 +1,48 @@
-use crate::{Coord, Marker, Na, Number, RemoveMarker, Ref, Symbol, Uri, Xstr};
+use crate::{Coord, Marker, Na, Number, Ref, RemoveMarker, Symbol, Uri, Xstr};
 use serde_json::json;
 use serde_json::Value;
 
 #[derive(Debug)]
 pub struct FromHaysonError {
-    message: String
+    message: String,
 }
 
 const KIND: &str = "_kind";
 
 impl FromHaysonError {
     pub fn new(message: String) -> Self {
-        Self {
-            message,
-        }
+        Self { message }
     }
 }
 
-fn error<T, M>(message: M) -> Result<T, FromHaysonError> where M: AsRef<str> {
+fn error<T, M>(message: M) -> Result<T, FromHaysonError>
+where
+    M: AsRef<str>,
+{
     Err(FromHaysonError::new(message.as_ref().to_owned()))
 }
 
-fn error_opt<M>(message: M) -> Option<FromHaysonError> where M: AsRef<str> {
+fn error_opt<M>(message: M) -> Option<FromHaysonError>
+where
+    M: AsRef<str>,
+{
     Some(FromHaysonError::new(message.as_ref().to_owned()))
 }
 
 fn check_kind(target_kind: &str, value: &Value) -> Option<FromHaysonError> {
     match value.get(KIND) {
-        Some(kind) => {
-            match kind {
-                Value::String(kind) => {
-                    if kind == target_kind {
-                        None
-                    } else {
-                        error_opt(format!("Expected '{}' = {} but found {}", KIND, kind, kind))
-                    }
-                },
-                _ => error_opt(format!("'{}' key is not a string", KIND))
+        Some(kind) => match kind {
+            Value::String(kind) => {
+                if kind == target_kind {
+                    None
+                } else {
+                    error_opt(format!(
+                        "Expected '{}' = {} but found {}",
+                        KIND, kind, kind
+                    ))
+                }
             }
+            _ => error_opt(format!("'{}' key is not a string", KIND)),
         },
         None => error_opt(format!("Missing '{}' key", KIND)),
     }
@@ -81,8 +86,8 @@ impl Hayson for Coord {
                 let lng = lng.unwrap();
 
                 Ok(Coord::new(lat, lng))
-            },
-            _ => error("Coord JSON value must be an object")
+            }
+            _ => error("Coord JSON value must be an object"),
         }
     }
 
@@ -121,8 +126,8 @@ impl Hayson for Ref {
                 }
 
                 Ok(Ref::new(ref_str).unwrap())
-            },
-            _ => error("Ref JSON value must be an object")
+            }
+            _ => error("Ref JSON value must be an object"),
         }
     }
 
@@ -143,7 +148,7 @@ impl Hayson for Number {
                     Some(float) => Ok(Number::new(float, None)),
                     None => error(format!("Number is not a f64: {}", num)),
                 }
-            },
+            }
             Value::Object(obj) => {
                 if let Some(kind_err) = check_kind("number", &value) {
                     return Err(kind_err);
@@ -168,7 +173,8 @@ impl Hayson for Number {
                         return error("Number unit is not a string");
                     }
                 }
-                let unit = unit.map(|unit_val| unit_val.as_str().unwrap().to_owned());
+                let unit =
+                    unit.map(|unit_val| unit_val.as_str().unwrap().to_owned());
 
                 match val {
                     Value::String(string) => {
@@ -197,8 +203,8 @@ impl Hayson for Number {
                     },
                     _ => error("Number val must be either a number or a string"),
                 }
-            },
-            _ => error("Ref JSON value must be an object")
+            }
+            _ => error("Ref JSON value must be an object"),
         }
     }
 
@@ -223,11 +229,11 @@ impl Hayson for Number {
                 "unit": self.unit(),
             })
         } else {
-                json!({
-                    KIND: kind,
-                    "val": value,
-                    "unit": self.unit(),
-                })
+            json!({
+                KIND: kind,
+                "val": value,
+                "unit": self.unit(),
+            })
         }
     }
 }
@@ -253,12 +259,15 @@ impl Hayson for Symbol {
                 let symbol_str = format!("^{}", val.unwrap());
 
                 if !Symbol::is_valid_symbol(&symbol_str) {
-                    return error(format!("Symbol val is not valid: {}", symbol_str));
+                    return error(format!(
+                        "Symbol val is not valid: {}",
+                        symbol_str
+                    ));
                 }
 
                 Ok(Symbol::new(symbol_str).unwrap())
-            },
-            _ => error("Symbol JSON value must be an object")
+            }
+            _ => error("Symbol JSON value must be an object"),
         }
     }
 
@@ -273,13 +282,11 @@ impl Hayson for Symbol {
 impl Hayson for Marker {
     fn from_hayson(value: &Value) -> Result<Self, FromHaysonError> {
         match &value {
-            Value::Object(_) => {
-                match check_kind("marker", &value) {
-                    Some(kind_err) => Err(kind_err),
-                    None => Ok(Marker::new())
-                }
+            Value::Object(_) => match check_kind("marker", &value) {
+                Some(kind_err) => Err(kind_err),
+                None => Ok(Marker::new()),
             },
-            _ => error("Marker JSON value must be an object")
+            _ => error("Marker JSON value must be an object"),
         }
     }
 
@@ -293,13 +300,11 @@ impl Hayson for Marker {
 impl Hayson for RemoveMarker {
     fn from_hayson(value: &Value) -> Result<Self, FromHaysonError> {
         match &value {
-            Value::Object(_) => {
-                match check_kind("remove", &value) {
-                    Some(kind_err) => Err(kind_err),
-                    None => Ok(RemoveMarker::new())
-                }
+            Value::Object(_) => match check_kind("remove", &value) {
+                Some(kind_err) => Err(kind_err),
+                None => Ok(RemoveMarker::new()),
             },
-            _ => error("RemoveMarker JSON value must be an object")
+            _ => error("RemoveMarker JSON value must be an object"),
         }
     }
 
@@ -313,13 +318,11 @@ impl Hayson for RemoveMarker {
 impl Hayson for Na {
     fn from_hayson(value: &Value) -> Result<Self, FromHaysonError> {
         match &value {
-            Value::Object(_) => {
-                match check_kind("na", &value) {
-                    Some(kind_err) => Err(kind_err),
-                    None => Ok(Na::new())
-                }
+            Value::Object(_) => match check_kind("na", &value) {
+                Some(kind_err) => Err(kind_err),
+                None => Ok(Na::new()),
             },
-            _ => error("NA JSON value must be an object")
+            _ => error("NA JSON value must be an object"),
         }
     }
 
@@ -349,8 +352,8 @@ impl Hayson for Uri {
                 }
 
                 Ok(Uri::new(val.unwrap().to_owned()))
-            },
-            _ => error("Uri JSON value must be an object")
+            }
+            _ => error("Uri JSON value must be an object"),
         }
     }
 
@@ -395,8 +398,8 @@ impl Hayson for Xstr {
                 let type_name = type_name.unwrap().to_owned();
 
                 Ok(Xstr::new(type_name, val))
-            },
-            _ => error("Xstr JSON value must be an object")
+            }
+            _ => error("Xstr JSON value must be an object"),
         }
     }
 
@@ -412,7 +415,9 @@ impl Hayson for Xstr {
 #[cfg(test)]
 mod test {
     use super::Hayson;
-    use crate::{Coord, Marker, Na, Number, Ref, RemoveMarker, Symbol, Uri, Xstr};
+    use crate::{
+        Coord, Marker, Na, Number, Ref, RemoveMarker, Symbol, Uri, Xstr,
+    };
 
     #[test]
     fn serde_coord_works() {
