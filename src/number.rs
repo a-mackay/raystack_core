@@ -18,6 +18,11 @@ impl Number {
         }
     }
 
+    /// Create a new `Number` with no units.
+    pub fn new_unitless(value: f64) -> Self {
+        Self::new(value, None)
+    }
+
     /// Return the numeric component of this `Number`.
     pub fn value(&self) -> f64 {
         self.value
