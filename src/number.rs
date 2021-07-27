@@ -30,12 +30,23 @@ impl Number {
     /// Create a new scientific notation `Number`. If present, the unit should
     /// be a valid unit string from Project Haystack's
     /// unit database.
-    pub fn new_scientific(significand: f64, exponent: isize, unit: Option<String>) -> Self {
-        Number::Scientific(ScientificNumber::new(significand, exponent, unit))
+    pub fn new_scientific(
+        significand: f64,
+        exponent: i32,
+        unit: Option<String>,
+    ) -> Option<Self> {
+        Some(Number::Scientific(ScientificNumber::new(
+            significand,
+            exponent,
+            unit,
+        )?))
     }
 
     /// Create a new scientific notation `Number` and no unit.
-    pub fn new_scientific_unitless(significand: f64, exponent: isize) -> Self {
+    pub fn new_scientific_unitless(
+        significand: f64,
+        exponent: i32,
+    ) -> Option<Self> {
         Self::new_scientific(significand, exponent, None)
     }
 
@@ -167,28 +178,34 @@ impl std::fmt::Display for BasicNumber {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ScientificNumber {
     significand: f64,
-    exponent: isize,
+    exponent: i32,
     unit: Option<String>,
 }
 
 impl ScientificNumber {
     /// Create a new `ScientificNumber`. If present, the unit should
     /// be a valid unit string from Project Haystack's
-    /// unit database.
+    /// unit database. The significand must be a finite number which is
+    /// not NaN.
     pub fn new(
         significand: f64,
-        exponent: isize,
+        exponent: i32,
         unit: Option<String>,
-    ) -> Self {
-        Self {
-            significand,
-            exponent,
-            unit,
+    ) -> Option<Self> {
+        if significand.is_nan() || significand.is_infinite() {
+            None
+        } else {
+            Some(Self {
+                significand,
+                exponent,
+                unit,
+            })
         }
     }
 
-    /// Create a new `ScientificNumber` with no unit.
-    pub fn new_unitless(significand: f64, exponent: isize) -> Self {
+    /// Create a new `ScientificNumber` with no unit. The significand must
+    /// be a finite number which is not NaN.
+    pub fn new_unitless(significand: f64, exponent: i32) -> Option<Self> {
         Self::new(significand, exponent, None)
     }
 
@@ -198,7 +215,7 @@ impl ScientificNumber {
     }
 
     /// Return the numeric exponent component of this number.
-    pub fn exponent(&self) -> isize {
+    pub fn exponent(&self) -> i32 {
         self.exponent
     }
 
@@ -207,42 +224,14 @@ impl ScientificNumber {
         self.unit.as_ref().map(|unit| unit.as_ref())
     }
 
-    /// Returns true if this number encoded as Axon will be a
-    /// number literal. Returns false if this number encoded as Axon
-    /// will be not be a number literal (it might involve Axon function calls).
-    pub fn axon_code_is_literal(&self) -> bool {
-        let sig = self.significand();
-        if sig.is_nan() || sig.is_infinite() {
-            false
-        } else {
-            true
-        }
-    }
-
     /// Return a string containing Axon code representing this number.
     pub fn to_axon_code(&self) -> String {
         let exp = self.exponent();
         let sig = self.significand();
         if let Some(unit) = self.unit() {
-            if sig.is_nan() {
-                format!("nan().as(\"{}\") * 10.pow({})", unit, exp)
-            } else if sig.is_infinite() && sig.is_sign_positive() {
-                format!("posInf().as(\"{}\") * 10.pow({})", unit, exp)
-            } else if sig.is_infinite() && sig.is_sign_negative() {
-                format!("negInf().as(\"{}\") * 10.pow({})", unit, exp)
-            } else {
-                format!("{}e{}{}", sig, exp, unit)
-            }
+            format!("{}e{}{}", sig, exp, unit)
         } else {
-            if sig.is_nan() {
-                format!("nan() * 10.pow({})", exp)
-            } else if sig.is_infinite() && sig.is_sign_positive() {
-                format!("posInf() * 10.pow({})", exp)
-            } else if sig.is_infinite() && sig.is_sign_negative() {
-                format!("negInf() * 10.pow({})", exp)
-            } else {
-                format!("{}e{}", sig, exp)
-            }
+            format!("{}e{}", sig, exp)
         }
     }
 }
@@ -251,25 +240,7 @@ impl std::fmt::Display for ScientificNumber {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let exp = self.exponent();
         let sig = self.significand();
-        if sig.is_nan() {
-            if let Some(unit) = self.unit() {
-                write!(f, "NaNe{} {}", exp, unit)
-            } else {
-                write!(f, "NaNe{}", exp)
-            }
-        } else if sig.is_infinite() && sig.is_sign_positive() {
-            if let Some(unit) = self.unit() {
-                write!(f, "INFe{} {}", exp, unit)
-            } else {
-                write!(f, "INFe{}", exp)
-            }
-        } else if sig.is_infinite() && sig.is_sign_negative() {
-            if let Some(unit) = self.unit() {
-                write!(f, "-INFe{} {}", exp, unit)
-            } else {
-                write!(f, "-INFe{}", exp)
-            }
-        } else if let Some(unit) = self.unit() {
+        if let Some(unit) = self.unit() {
             write!(f, "{}e{} {}", sig, exp, unit)
         } else {
             write!(f, "{}e{}", sig, exp)
