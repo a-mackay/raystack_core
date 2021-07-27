@@ -17,7 +17,7 @@ pub use hayson::{FromHaysonError, Hayson};
 pub use hsref::{ParseRefError, Ref};
 pub use marker::{Marker, RemoveMarker};
 pub use na::Na;
-pub use number::Number;
+pub use number::{BasicNumber, Number, ScientificNumber};
 pub use qname::Qname;
 pub use symbol::{ParseSymbolError, Symbol};
 pub use tag::{is_tag_name, ParseTagNameError, TagName};

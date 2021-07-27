@@ -209,31 +209,53 @@ impl Hayson for Number {
     }
 
     fn to_hayson(&self) -> Value {
-        let kind = "number";
-        let value = self.value();
-        if value.is_nan() {
-            json!({
-                KIND: kind,
-                "val": "NaN",
-            })
-        } else if value.is_infinite() && value.is_sign_positive() {
-            json!({
-                KIND: kind,
-                "val": "INF",
-                "unit": self.unit(),
-            })
-        } else if value.is_infinite() && value.is_sign_negative() {
-            json!({
-                KIND: kind,
-                "val": "-INF",
-                "unit": self.unit(),
-            })
-        } else {
-            json!({
-                KIND: kind,
-                "val": value,
-                "unit": self.unit(),
-            })
+        match self {
+            Self::Basic(basic_num) => {
+                let kind = "number";
+                let value = basic_num.value();
+                if value.is_nan() {
+                    // SkySpark does not return units for NaN in its
+                    // Hayson encoding, despite SkySpark's 'unit' function
+                    // suggesting that NaN can have units.
+                    json!({
+                        KIND: kind,
+                        "val": "NaN",
+                    })
+                } else if value.is_infinite() && value.is_sign_positive() {
+                    // SkySpark does not return units for INF in its
+                    // Hayson encoding, despite SkySpark's 'unit' function
+                    // suggesting that INF can have units.
+                    json!({
+                        KIND: kind,
+                        "val": "INF",
+                    })
+                } else if value.is_infinite() && value.is_sign_negative() {
+                    // SkySpark does not return units for -INF in its
+                    // Hayson encoding, despite SkySpark's 'unit' function
+                    // suggesting that -INF can have units.
+                    json!({
+                        KIND: kind,
+                        "val": "-INF",
+                    })
+                } else {
+                    json!({
+                        KIND: kind,
+                        "val": value,
+                        "unit": self.unit(),
+                    })
+                }
+            }
+            Self::Scientific(sci_num) => {
+                let kind = "number";
+                let sig = sci_num.significand();
+                let exp = sci_num.exponent();
+                let value = sig * 10f64.powi(exp);
+                json!({
+                    KIND: kind,
+                    "val": value,
+                    "unit": self.unit(),
+                })
+            }
         }
     }
 }
@@ -440,6 +462,7 @@ mod test {
         let num = Number::new(f64::NAN, None);
         let value = num.to_hayson();
         let deserialized = Number::from_hayson(&value).unwrap();
+        let deserialized = deserialized.as_number().unwrap();
         assert!(deserialized.value().is_nan());
         assert!(deserialized.unit().is_none())
     }
@@ -454,10 +477,15 @@ mod test {
 
     #[test]
     fn serde_number_posinf_units_works() {
+        // SkySpark's Hayson implementation strips the units from INF:
         let num = Number::new(f64::INFINITY, Some("m/s".to_owned()));
         let value = num.to_hayson();
         let deserialized = Number::from_hayson(&value).unwrap();
-        assert_eq!(num, deserialized);
+        let deserialized = deserialized.as_number().unwrap();
+
+        assert!(deserialized.value().is_infinite());
+        assert!(deserialized.value().is_sign_positive());
+        assert!(deserialized.unit().is_none());
     }
 
     #[test]
@@ -470,10 +498,15 @@ mod test {
 
     #[test]
     fn serde_number_neginf_units_works() {
+        // SkySpark's Hayson implementation strips the units from -INF:
         let num = Number::new(f64::NEG_INFINITY, Some("m/s".to_owned()));
         let value = num.to_hayson();
         let deserialized = Number::from_hayson(&value).unwrap();
-        assert_eq!(num, deserialized);
+        let deserialized = deserialized.as_number().unwrap();
+
+        assert!(deserialized.value().is_infinite());
+        assert!(deserialized.value().is_sign_negative());
+        assert!(deserialized.unit().is_none());
     }
 
     #[test]
@@ -490,6 +523,33 @@ mod test {
         let value = num.to_hayson();
         let deserialized = Number::from_hayson(&value).unwrap();
         assert_eq!(num, deserialized);
+    }
+
+    #[test]
+    fn serde_number_scientific_unitless_barely_works() {
+        let num = Number::new_scientific_unitless(6.62607015, -34).unwrap();
+        let value = num.to_hayson();
+        let deserialized = Number::from_hayson(&value).unwrap();
+
+        // Currently, scientific notation numbers are evaluated then
+        // serialized as a float which is not in scientific notation.
+        let basic = deserialized.as_number().unwrap();
+        assert_eq!(basic.value(), 0.000000000000000000000000000000000662607015);
+    }
+
+    #[test]
+    fn serde_number_scientific_units_barely_works() {
+        let num =
+            Number::new_scientific(6.62607015, -34, Some("m/s".to_owned()))
+                .unwrap();
+        let value = num.to_hayson();
+        let deserialized = Number::from_hayson(&value).unwrap();
+
+        // Currently, scientific notation numbers are evaluated then
+        // serialized as a float which is not in scientific notation.
+        let basic = deserialized.as_number().unwrap();
+        assert_eq!(basic.value(), 0.000000000000000000000000000000000662607015);
+        assert_eq!(basic.unit(), Some("m/s"));
     }
 
     #[test]
