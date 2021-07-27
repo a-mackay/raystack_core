@@ -1,4 +1,4 @@
-use crate::{Coord, Marker, Na, Number, Ref, RemoveMarker, Symbol, Uri, Xstr};
+use crate::{Coord, Marker, Na, BasicNumber, Ref, RemoveMarker, Symbol, Uri, Xstr};
 use serde_json::json;
 use serde_json::Value;
 
@@ -139,13 +139,13 @@ impl Hayson for Ref {
     }
 }
 
-impl Hayson for Number {
+impl Hayson for BasicNumber {
     fn from_hayson(value: &Value) -> Result<Self, FromHaysonError> {
         match &value {
             Value::Number(num) => {
                 let float = num.as_f64();
                 match float {
-                    Some(float) => Ok(Number::new(float, None)),
+                    Some(float) => Ok(BasicNumber::new(float, None)),
                     None => error(format!("Number is not a f64: {}", num)),
                 }
             }
@@ -180,15 +180,15 @@ impl Hayson for Number {
                     Value::String(string) => {
                         match string.as_ref() {
                             "INF" => {
-                                let num = Number::new(f64::INFINITY, unit);
+                                let num = BasicNumber::new(f64::INFINITY, unit);
                                 Ok(num)
                             },
                             "-INF" => {
-                                let num = Number::new(f64::NEG_INFINITY, unit);
+                                let num = BasicNumber::new(f64::NEG_INFINITY, unit);
                                 Ok(num)
                             },
                             "NaN" => {
-                                let num = Number::new(f64::NAN, None);
+                                let num = BasicNumber::new(f64::NAN, None);
                                 Ok(num)
                             },
                             _ => error("Number val is a string but is not one of INF, -INF or NaN"),
@@ -197,7 +197,7 @@ impl Hayson for Number {
                     Value::Number(num) => {
                         let float = num.as_f64();
                         match float {
-                            Some(float) => Ok(Number::new(float, unit)),
+                            Some(float) => Ok(BasicNumber::new(float, unit)),
                             None => error(format!("Number val is not a f64: {}", num)),
                         }
                     },
@@ -416,7 +416,7 @@ impl Hayson for Xstr {
 mod test {
     use super::Hayson;
     use crate::{
-        Coord, Marker, Na, Number, Ref, RemoveMarker, Symbol, Uri, Xstr,
+        Coord, Marker, Na, BasicNumber, Ref, RemoveMarker, Symbol, Uri, Xstr,
     };
 
     #[test]
@@ -437,58 +437,58 @@ mod test {
 
     #[test]
     fn serde_number_nan_works() {
-        let num = Number::new(f64::NAN, None);
+        let num = BasicNumber::new(f64::NAN, None);
         let value = num.to_hayson();
-        let deserialized = Number::from_hayson(&value).unwrap();
+        let deserialized = BasicNumber::from_hayson(&value).unwrap();
         assert!(deserialized.value().is_nan());
         assert!(deserialized.unit().is_none())
     }
 
     #[test]
     fn serde_number_posinf_unitless_works() {
-        let num = Number::new(f64::INFINITY, None);
+        let num = BasicNumber::new(f64::INFINITY, None);
         let value = num.to_hayson();
-        let deserialized = Number::from_hayson(&value).unwrap();
+        let deserialized = BasicNumber::from_hayson(&value).unwrap();
         assert_eq!(num, deserialized);
     }
 
     #[test]
     fn serde_number_posinf_units_works() {
-        let num = Number::new(f64::INFINITY, Some("m/s".to_owned()));
+        let num = BasicNumber::new(f64::INFINITY, Some("m/s".to_owned()));
         let value = num.to_hayson();
-        let deserialized = Number::from_hayson(&value).unwrap();
+        let deserialized = BasicNumber::from_hayson(&value).unwrap();
         assert_eq!(num, deserialized);
     }
 
     #[test]
     fn serde_number_neginf_unitless_works() {
-        let num = Number::new(f64::NEG_INFINITY, None);
+        let num = BasicNumber::new(f64::NEG_INFINITY, None);
         let value = num.to_hayson();
-        let deserialized = Number::from_hayson(&value).unwrap();
+        let deserialized = BasicNumber::from_hayson(&value).unwrap();
         assert_eq!(num, deserialized);
     }
 
     #[test]
     fn serde_number_neginf_units_works() {
-        let num = Number::new(f64::NEG_INFINITY, Some("m/s".to_owned()));
+        let num = BasicNumber::new(f64::NEG_INFINITY, Some("m/s".to_owned()));
         let value = num.to_hayson();
-        let deserialized = Number::from_hayson(&value).unwrap();
+        let deserialized = BasicNumber::from_hayson(&value).unwrap();
         assert_eq!(num, deserialized);
     }
 
     #[test]
     fn serde_number_unitless_works() {
-        let num = Number::new(1.23, None);
+        let num = BasicNumber::new(1.23, None);
         let value = num.to_hayson();
-        let deserialized = Number::from_hayson(&value).unwrap();
+        let deserialized = BasicNumber::from_hayson(&value).unwrap();
         assert_eq!(num, deserialized);
     }
 
     #[test]
     fn serde_number_units_works() {
-        let num = Number::new(1.23, Some("m/s".to_owned()));
+        let num = BasicNumber::new(1.23, Some("m/s".to_owned()));
         let value = num.to_hayson();
-        let deserialized = Number::from_hayson(&value).unwrap();
+        let deserialized = BasicNumber::from_hayson(&value).unwrap();
         assert_eq!(num, deserialized);
     }
 
